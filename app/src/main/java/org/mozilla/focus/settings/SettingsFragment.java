@@ -44,6 +44,8 @@ public class SettingsFragment extends PreferenceFragment implements SharedPrefer
         String keyClicked = preference.getKey();
         if (keyClicked.equals(resources.getString(R.string.pref_key_give_feedback))) {
             DialogUtils.showRateAppDialog(getActivity());
+        } else if (keyClicked.equals(resources.getString(R.string.pref_key_share_with_friends))) {
+            DialogUtils.showShareAppDialog(getActivity());
         } else if (keyClicked.equals(resources.getString(R.string.pref_key_about))) {
             final Intent intent = InfoActivity.getAboutIntent(getActivity());
             startActivity(intent);
