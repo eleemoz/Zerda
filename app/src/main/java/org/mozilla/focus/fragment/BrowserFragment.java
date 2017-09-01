@@ -53,10 +53,12 @@ import org.mozilla.focus.R;
 import org.mozilla.focus.download.DownloadInfo;
 import org.mozilla.focus.download.DownloadInfoManager;
 import org.mozilla.focus.menu.WebContextMenu;
+import org.mozilla.focus.components.RecursiveFileObserver;
 import org.mozilla.focus.screenshot.ScreenshotManager;
 import org.mozilla.focus.screenshot.model.Screenshot;
 import org.mozilla.focus.telemetry.TelemetryWrapper;
 import org.mozilla.focus.utils.ColorUtils;
+import org.mozilla.focus.utils.DialogUtils;
 import org.mozilla.focus.utils.DrawableUtils;
 import org.mozilla.focus.utils.FilePickerUtil;
 import org.mozilla.focus.utils.FileUtils;
@@ -93,7 +95,6 @@ public class BrowserFragment extends WebFragment implements View.OnClickListener
     private static final int ANIMATION_DURATION = 300;
     private static final String ARGUMENT_URL = "url";
     private static final String RESTORE_KEY_DOWNLOAD = "download";
-    private static final String SCREENSHOT_PATH = Environment.getExternalStorageDirectory() + File.separator + Environment.DIRECTORY_PICTURES + File.separator + "Screenshots" + File.separator;
 
     private static final int SITE_GLOBE = 0;
     private static final int SITE_LOCK = 1;
@@ -148,18 +149,19 @@ public class BrowserFragment extends WebFragment implements View.OnClickListener
     @Override
     public void onPause() {
         super.onPause();
-        if(fileObserver != null)
+        if(fileObserver != null) {
             fileObserver.stopWatching();
+        }
     }
 
     @Override
     public void onResume() {
         super.onResume();
         if(Settings.getInstance(getActivity()).shouldShowScreenshotOnBoarding()) {
-            fileObserver = new FileObserver(SCREENSHOT_PATH, FileObserver.CREATE) {
+            fileObserver = new RecursiveFileObserver(Environment.getExternalStorageDirectory().getPath(), FileObserver.CREATE) {
                 @Override
                 public void onEvent(int event, String path) {
-                    if((event & FileObserver.CREATE) != 0 && !TextUtils.isEmpty(path)) {
+                    if((event & FileObserver.CREATE) != 0 && !TextUtils.isEmpty(path) && path.toLowerCase().contains("screenshot")) {
                         getActivity().runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
@@ -841,38 +843,14 @@ public class BrowserFragment extends WebFragment implements View.OnClickListener
     }
 
     private void showScreenshotOnBoardingDialog() {
-        if(dialogScreenshotOnBoarding != null && dialogScreenshotOnBoarding.isShowing())
-            return;
-
         if(getActivity() != null && Settings.getInstance(getActivity()).shouldShowScreenshotOnBoarding()) {
-            dialogScreenshotOnBoarding = new AlertDialog.Builder(getActivity()).create();
-            View dialogView = LayoutInflater.from(getActivity()).inflate(R.layout.layout_screenshot_onboarding_dialog, null);
-
-
-            TextView textView = (TextView) dialogView.findViewById(R.id.dialog_screenshot_on_boarding_text);
-            ImageSpan imageSpan = new ImageSpan(getActivity(), R.drawable.action_capture);
-            String emptyPrefix = getString(R.string.screenshot_on_boarding_text_msg_prefix);
-            String emptyPostfix = getString(R.string.screenshot_on_boarding_text_msg_postfix);
-            SpannableString spannableString = new SpannableString(emptyPrefix + emptyPostfix);
-
-            int start = emptyPrefix.length();
-            int end = start + 1;
-            spannableString.setSpan(imageSpan, start, end, Spanned.SPAN_INCLUSIVE_INCLUSIVE);
-            textView.setText(spannableString);
-
-            dialogView.findViewById(R.id.dialog_screenshot_on_boarding_btn_got_it).setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if(dialogScreenshotOnBoarding != null)
-                        dialogScreenshotOnBoarding.dismiss();
-                }
-            });
-            dialogScreenshotOnBoarding.setView(dialogView);
-            dialogScreenshotOnBoarding.show();
-
-            Settings.getInstance(getActivity()).setScreenshotOnBoardingDone();
-            if(fileObserver != null)
+            if(dialogScreenshotOnBoarding != null && dialogScreenshotOnBoarding.isShowing()) {
+                return;
+            }
+            dialogScreenshotOnBoarding = DialogUtils.showScreenshotOnBoardingDialog(getActivity());
+            if(fileObserver != null) {
                 fileObserver.stopWatching();
+            }
         }
     }
 
